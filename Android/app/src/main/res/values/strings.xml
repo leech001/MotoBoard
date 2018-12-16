@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">Авто смазчик</string>
+    <string name="select_device">Выберете устройство</string>
+    <string name="start_scan">Найти устройства</string>
+    <string name="stop_scan">Остановить поиск</string>
+    <string name="connect">Соединиться </string>
+    <string name="connecting">Соединяемся ....</string>
+    <string name="read">Read</string>
+    <string name="write">Write</string>
+    <string name="write_input">Write input</string>
+    <string name="prefix_hex">0x</string>
+    <string name="setup_notification">Установленно соединение</string>
+    <string name="not_clickable">No action</string>
+    <string name="mac_address">MAC: %s</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="title_connection">Авто смазчик цепи</string>
+    <string name="characteristic">Characteristic: </string>
+    <string name="connect_discover">Connect &amp; discover services</string>
+    <string name="WheelRotateLimit">Цикл смазки (об): </string>
+    <string name="WheelRotateCount">Количество произведенных оборотов (об): </string>
+    <string name="LubeDelay">Время смазки (мс): </string>
+    <string name="LubeCount">Количество циклов смазки (ед): </string>
+    <string name="Speed">Скорость (км/ч): </string>
+</resources>
