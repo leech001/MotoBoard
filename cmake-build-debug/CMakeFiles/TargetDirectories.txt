@@ -1,0 +1,4 @@
+D:/temp/Oiler2018/cmake-build-debug/CMakeFiles/edit_cache.dir
+D:/temp/Oiler2018/cmake-build-debug/CMakeFiles/Oiler2018.elf.dir
+D:/temp/Oiler2018/cmake-build-debug/CMakeFiles/UPLOAD.dir
+D:/temp/Oiler2018/cmake-build-debug/CMakeFiles/rebuild_cache.dir
