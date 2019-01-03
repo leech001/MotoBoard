@@ -24,8 +24,10 @@ When the specified threshold number of revolutions is reached, the static pump i
 
 ## Scheme (Схема устройства)
 
-![scheme](https://github.com/leech001/Autoiler/tree/master/Scheme/Schematic_AutoOiler_Sheet-1_20190103125312.png )
+![scheme](https://github.com/leech001/Autoiler/blob/master/Scheme/Schematic_AutoOiler_Sheet-1_20190103125312.png)
 
 ## Android Application (Приложение для управления устройством)
 
-![scheme](https://github.com/leech001/Autoiler/tree/master/Scheme/Schematic_AutoOiler_Sheet-1_20190103125312.png )
+![App_1](https://github.com/leech001/Autoiler/blob/master/Pictures/photo_2019-01-03_13-13-19.jpg)
+
+![App_2](https://github.com/leech001/Autoiler/blob/master/Pictures/photo_2019-01-03_13-13-23.jpg)
