@@ -80,21 +80,22 @@ UART_HandleTypeDef huart1;
 osThreadId defaultTaskHandle;
 osThreadId LubeLimitCorrecHandle;
 osThreadId BLETransmitTaskHandle;
+osThreadId ledBlinkHandle;
 /* USER CODE BEGIN PV */
 
 
-uint8_t receiveBuffer = '\000';
-uint8_t receiveString[32]; // where we build our string from characters coming in
-int receiveindex = 0; // index for going though rxString
+uint8_t rx_data = 0;
+uint8_t rx_buffer[32]; // where we build our string from characters coming in
+int rx_index = 0; // index for going though rxString
 
 const float lenghtWheel = 1.96;		//Длинна окружности колеса
-const int ble_delay = 100;
+const int ble_delay = 50;
 
 uint16_t LubeCount = 0;
-uint16_t LubeDelay = 500;
+uint16_t LubeDelay = 1600;
 uint16_t WheelRotateCount = 0;
 uint16_t WheelRotateCountPrev;
-uint16_t WheelRotateLimitBase = 300;
+uint16_t WheelRotateLimitBase = 2400;
 double WheelRotateLimit;
 double WheelSpeed;
 uint32_t SpeedDelay = 5;
@@ -108,6 +109,7 @@ static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void const * argument);
 void StartLubeLimitCorrectTask(void const * argument);
 void StartBLETransmitTask(void const * argument);
+void StartLedBlink(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -129,35 +131,31 @@ char *JSON_Transmit(char *name, uint16_t value) {
 }
 
 
-int JSON_Receive(const char * const sjson) {
-    const cJSON *j_LubeCount = NULL;
+void JSON_Receive(const char * const sjson) {
     const cJSON *j_LubeDelay = NULL;
-    const cJSON *j_WheelRotateCount = NULL;
     const cJSON *j_WheelRotateLimitBase = NULL;
-    int status = 0;
     cJSON *o_json = cJSON_Parse(sjson);
-    if (o_json == NULL) {
-        status = 0;
-        goto end;
-    }
+    if (o_json != NULL) {
+        j_LubeDelay = cJSON_GetObjectItemCaseSensitive(o_json, "LD");
+        if (j_LubeDelay != NULL) {
+            LubeDelay = (uint16_t) j_LubeDelay->valueint;
+            cJSON_Delete(o_json);
+        }
 
-    j_LubeCount = cJSON_GetObjectItemCaseSensitive(o_json, "LubeCount");
-    if (cJSON_IsString(j_LubeCount) && (j_LubeCount->valuestring != NULL)) {
-        LubeCount = (uint16_t) j_LubeCount->valuestring;
-        status = 1;
+        j_WheelRotateLimitBase = cJSON_GetObjectItemCaseSensitive(o_json, "WRL");
+        if (j_WheelRotateLimitBase != NULL) {
+            WheelRotateLimitBase = (uint16_t) j_WheelRotateLimitBase->valueint;
+            cJSON_Delete(o_json);
+        }
     }
-    end:
     cJSON_Delete(o_json);
-    return status;
 }
 
 
 void LubeChain(void) {
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);
     osDelay(LubeDelay);
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_RESET);
     LubeCount++;
 
 //    EE_WriteVariable(VirtAddVarTab[0], LubeCount);    //Save lube count
@@ -168,26 +166,22 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     WheelRotateCount++;
 }
 
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-    CDC_Transmit_FS(&receiveBuffer, (uint16_t) strlen((char *) &receiveBuffer));
 
-    if (receiveBuffer == '\n' || receiveBuffer == '\r') // If Enter
-    {
-        JSON_Receive((char*) receiveString);
-        receiveString[receiveindex] = 0;
-        receiveindex = 0;
-        for (int i = 0; i < 255; i++) receiveString[i] = 0; // Clear the string buffer
-    } else {
-        receiveString[receiveindex] = receiveBuffer; // Add that character to the string
-        receiveindex++;
-        if (receiveindex > 255) // User typing too much, we can't have commands that big
-        {
-            receiveindex = 0;
-            for (int i = 0; i < 255; i++) receiveString[i] = 0; // Clear the string buffer
+        if (rx_data != 10){
+            rx_buffer[rx_index++]= rx_data;
         }
-    }
-}
+        else {
+            JSON_Receive((char*) rx_buffer);
+            CDC_Transmit_FS(rx_buffer, (uint16_t) strlen((char *) &rx_buffer));
+            rx_index = 0;
+            for (int i=0; i<32; i++) rx_buffer[i]=0;
+        }
 
+        HAL_UART_Receive_IT (&huart1, &rx_data, 1);     // activate receive
+
+}
 
 /* USER CODE END 0 */
 
@@ -222,6 +216,8 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  HAL_UART_Receive_IT(&huart1, &rx_data, 1);
+
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -248,6 +244,10 @@ int main(void)
   /* definition and creation of BLETransmitTask */
   osThreadDef(BLETransmitTask, StartBLETransmitTask, osPriorityIdle, 0, 128);
   BLETransmitTaskHandle = osThreadCreate(osThread(BLETransmitTask), NULL);
+
+  /* definition and creation of ledBlink */
+  osThreadDef(ledBlink, StartLedBlink, osPriorityIdle, 0, 128);
+  ledBlinkHandle = osThreadCreate(osThread(ledBlink), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
     /* add threads, ... */
@@ -362,14 +362,17 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
@@ -378,18 +381,29 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB12 */
-  GPIO_InitStruct.Pin = GPIO_PIN_12;
+  /*Configure GPIO pin : PA1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PA2 PA3 PA4 PA5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB11 */
+  GPIO_InitStruct.Pin = GPIO_PIN_11;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_9;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
 }
 
@@ -419,9 +433,6 @@ void StartDefaultTask(void const * argument)
             WheelRotateCountPrev = 0;
             LubeChain();
         }
-
-        HAL_UART_Receive_IT(&huart1, &receiveBuffer, 1);
-
         osDelay(1);
     }
    
@@ -499,6 +510,25 @@ void StartBLETransmitTask(void const * argument)
       osDelay(ble_delay);
   }
   /* USER CODE END StartBLETransmitTask */
+}
+
+/* USER CODE BEGIN Header_StartLedBlink */
+/**
+* @brief Function implementing the ledBlink thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartLedBlink */
+void StartLedBlink(void const * argument)
+{
+  /* USER CODE BEGIN StartLedBlink */
+  /* Infinite loop */
+  for(;;)
+  {
+      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+      osDelay(100);
+  }
+  /* USER CODE END StartLedBlink */
 }
 
 /**
