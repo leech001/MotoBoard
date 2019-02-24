@@ -57,6 +57,7 @@
 /* USER CODE BEGIN Includes */
 #include "usbd_cdc_if.h"
 #include "cjson/cJSON.h"
+#include "eeprom/eeprom.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -83,6 +84,7 @@ osThreadId BLETransmitTaskHandle;
 osThreadId ledBlinkHandle;
 /* USER CODE BEGIN PV */
 
+uint16_t VirtAddVarTab[NB_OF_VAR] = {0, 1, 2};
 
 uint8_t rx_data = 0;
 uint8_t rx_buffer[32]; // where we build our string from characters coming in
@@ -91,11 +93,11 @@ int rx_index = 0; // index for going though rxString
 const float lenghtWheel = 1.96;		//Длинна окружности колеса
 const int ble_delay = 50;
 
-uint16_t LubeCount = 0;
-uint16_t LubeDelay = 1600;
+uint16_t LubeCount;
+uint16_t LubeDelay;
 uint16_t WheelRotateCount = 0;
 uint16_t WheelRotateCountPrev;
-uint16_t WheelRotateLimitBase = 2400;
+uint16_t WheelRotateLimitBase;
 double WheelRotateLimit;
 double WheelSpeed;
 uint32_t SpeedDelay = 5;
@@ -131,20 +133,22 @@ char *JSON_Transmit(char *name, uint16_t value) {
 }
 
 
-void JSON_Receive(const char * const sjson) {
+void JSON_Receive(const char * const s_json) {
     const cJSON *j_LubeDelay = NULL;
     const cJSON *j_WheelRotateLimitBase = NULL;
-    cJSON *o_json = cJSON_Parse(sjson);
+    cJSON *o_json = cJSON_Parse(s_json);
     if (o_json != NULL) {
         j_LubeDelay = cJSON_GetObjectItemCaseSensitive(o_json, "LD");
         if (j_LubeDelay != NULL) {
             LubeDelay = (uint16_t) j_LubeDelay->valueint;
+            EE_WriteVariable(VirtAddVarTab[2], LubeDelay);
             cJSON_Delete(o_json);
         }
 
-        j_WheelRotateLimitBase = cJSON_GetObjectItemCaseSensitive(o_json, "WRL");
+        j_WheelRotateLimitBase = cJSON_GetObjectItemCaseSensitive(o_json, "WRLB");
         if (j_WheelRotateLimitBase != NULL) {
             WheelRotateLimitBase = (uint16_t) j_WheelRotateLimitBase->valueint;
+            EE_WriteVariable(VirtAddVarTab[1], WheelRotateLimitBase);
             cJSON_Delete(o_json);
         }
     }
@@ -158,7 +162,7 @@ void LubeChain(void) {
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_RESET);
     LubeCount++;
 
-//    EE_WriteVariable(VirtAddVarTab[0], LubeCount);    //Save lube count
+    EE_WriteVariable(VirtAddVarTab[0], LubeCount);    //Save lube count
 }
 
 
@@ -216,7 +220,21 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_UART_Receive_IT(&huart1, &rx_data, 1);
+    HAL_UART_Receive_IT(&huart1, &rx_data, 1);
+
+    HAL_FLASH_Unlock();
+    EE_Init();
+
+    EE_ReadVariable(VirtAddVarTab[0], &LubeCount);
+    EE_ReadVariable(VirtAddVarTab[1], &WheelRotateLimitBase);
+    EE_ReadVariable(VirtAddVarTab[2], &LubeDelay);
+
+    if (WheelRotateLimitBase == 0)
+    {
+        EE_WriteVariable(VirtAddVarTab[0], 0);      //Write LubeCount if device clear
+        EE_WriteVariable(VirtAddVarTab[1], 2400);   //Write WheelRotateLimitBase if device clear
+        EE_WriteVariable(VirtAddVarTab[2], 1600);   //Write LubeDelay if device clear
+    }
 
   /* USER CODE END 2 */
 
@@ -477,34 +495,37 @@ void StartBLETransmitTask(void const * argument)
 {
   /* USER CODE BEGIN StartBLETransmitTask */
   /* Infinite loop */
+
+  unsigned char *ble_transmit;
+
   for(;;)
   {
-      unsigned char *ble_transmit = (unsigned char *) JSON_Transmit("LD", LubeDelay);
-//      CDC_Transmit_FS(ble_transmit, (uint16_t) strlen((char *) ble_transmit));
+      ble_transmit = (unsigned char *) JSON_Transmit("LD", LubeDelay);
+      CDC_Transmit_FS(ble_transmit, (uint16_t) strlen((char *) ble_transmit));
       HAL_UART_Transmit_IT(&huart1, ble_transmit, (uint16_t) strlen((char *) ble_transmit));
       free(ble_transmit);
       osDelay(ble_delay);
 
       ble_transmit = (unsigned char *) JSON_Transmit("LC", LubeCount);
-//      CDC_Transmit_FS(ble_transmit, (uint16_t) strlen((char *) ble_transmit));
+      CDC_Transmit_FS(ble_transmit, (uint16_t) strlen((char *) ble_transmit));
       HAL_UART_Transmit_IT(&huart1, ble_transmit, (uint16_t) strlen((char *) ble_transmit));
       free(ble_transmit);
       osDelay(ble_delay);
 
       ble_transmit = (unsigned char *) JSON_Transmit("WRC", WheelRotateCount);
-//      CDC_Transmit_FS(ble_transmit, (uint16_t) strlen((char *) ble_transmit));
+      CDC_Transmit_FS(ble_transmit, (uint16_t) strlen((char *) ble_transmit));
       HAL_UART_Transmit_IT(&huart1, ble_transmit, (uint16_t) strlen((char *) ble_transmit));
       free(ble_transmit);
       osDelay(ble_delay);
 
       ble_transmit = (unsigned char *) JSON_Transmit("WRL", (uint16_t) WheelRotateLimit);
-//      CDC_Transmit_FS(ble_transmit, (uint16_t) strlen((char *) ble_transmit));
+      CDC_Transmit_FS(ble_transmit, (uint16_t) strlen((char *) ble_transmit));
       HAL_UART_Transmit_IT(&huart1, ble_transmit, (uint16_t) strlen((char *) ble_transmit));
       free(ble_transmit);
       osDelay(ble_delay);
 
       ble_transmit = (unsigned char *) JSON_Transmit("SP", (uint16_t) WheelSpeed);
-//      CDC_Transmit_FS(ble_transmit, (uint16_t) strlen((char *) ble_transmit));
+      CDC_Transmit_FS(ble_transmit, (uint16_t) strlen((char *) ble_transmit));
       HAL_UART_Transmit_IT(&huart1, ble_transmit, (uint16_t) strlen((char *) ble_transmit));
       free(ble_transmit);
       osDelay(ble_delay);
@@ -523,10 +544,11 @@ void StartLedBlink(void const * argument)
 {
   /* USER CODE BEGIN StartLedBlink */
   /* Infinite loop */
+
   for(;;)
   {
       HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-      osDelay(100);
+      osDelay(1000);
   }
   /* USER CODE END StartLedBlink */
 }
