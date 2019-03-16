@@ -1,24 +1,47 @@
 <resources>
-    <string name="app_name">Авто смазчик</string>
-    <string name="select_device">Выберете устройство</string>
+    <string name="app_name">Автосмазчик</string>
+    <string name="select_device">Выбери устройство</string>
+
+    <string name="mac_address">MAC: %s</string>
+
+    <string name="button_start_scan">Начать сканирование</string>
+    <string name="button_stop_scan">Остановить сканирование</string>
+    <string name="button_connect">Соединиться</string>
+    <string name="button_disconnect">Отсоединиться</string>
+
     <string name="start_scan">Найти устройства</string>
     <string name="stop_scan">Остановить поиск</string>
+
     <string name="connect">Соединиться </string>
     <string name="connecting">Соединяемся ....</string>
-    <string name="read">Read</string>
-    <string name="write">Write</string>
-    <string name="write_input">Write input</string>
-    <string name="prefix_hex">0x</string>
-    <string name="setup_notification">Установленно соединение</string>
-    <string name="not_clickable">No action</string>
-    <string name="mac_address">MAC: %s</string>
-    <string name="disconnect">Disconnect</string>
+    <string name="scan_button">Сканировать</string>
+
     <string name="title_connection">Авто смазчик цепи</string>
-    <string name="characteristic">Characteristic: </string>
-    <string name="connect_discover">Connect &amp; discover services</string>
+
     <string name="WheelRotateLimit">Цикл смазки (об): </string>
     <string name="WheelRotateCount">Количество произведенных оборотов (об): </string>
     <string name="LubeDelay">Время смазки (мс): </string>
     <string name="LubeCount">Количество циклов смазки (ед): </string>
     <string name="Speed">Скорость (км/ч): </string>
+
+    <!-- Ble scan error messages -->
+    <string name="error_bluetooth_not_available">Bluetooth is not available</string>
+    <string name="error_bluetooth_disabled">Enable bluetooth and try again</string>
+    <string name="error_location_permission_missing">On Android 6.0 location permission is required. Please enable it in
+        phone settings
+    </string>
+    <string name="error_location_services_disabled">Location services need to be enabled on Android 6.0</string>
+    <string name="error_scan_failed_already_started">Scan with the same filters is already started</string>
+    <string name="error_scan_failed_application_registration_failed">Failed to register application for bluetooth scan
+    </string>
+    <string name="error_scan_failed_feature_unsupported">Scan with specified parameters is not supported</string>
+    <string name="error_scan_failed_internal_error">Scan failed due to internal error</string>
+    <string name="error_scan_failed_out_of_hardware_resources">Scan cannot start due to limited hardware resources
+    </string>
+    <string name="error_undocumented_scan_throttle">Android 7+ does not allow more scans.</string>
+    <string name="error_undocumented_scan_throttle_retry">Try in %d seconds</string>
+    <string name="error_bluetooth_cannot_start">Unable to start scanning</string>
+    <string name="error_unknown_error">Unknown error</string>
+    <string name="error_no_message">No message found for reason=%d. Consider adding one.</string>
+
 </resources>
